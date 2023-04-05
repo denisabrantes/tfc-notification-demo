@@ -50,8 +50,8 @@ pipeline:
                       GKE_CLUSTER_NAME=$(terraform output -raw kubernetes-cluster-name)
                     envVariables:
                       TF_TOKEN_app_terraform_io: <+secrets.getValue("terraform_cloud_api_token")>
-                      TF_WORKSPACE: <+secrets.getValue("terraform_workspace")>
-                      TF_CLOUD_ORGANIZATION: <+secrets.getValue("terraform_cloud_organization")>
+                      TF_WORKSPACE: <+trigger.payload.workspace_name>
+                      TF_CLOUD_ORGANIZATION: <+trigger.payload.organization_name>
                     outputVariables:
                       - name: GCP_PROJECT
                       - name: GCP_ZONE
