@@ -1,0 +1,17 @@
+trigger:
+  name: tfc notification
+  identifier: tfc_notification
+  enabled: true
+  orgIdentifier: default
+  projectIdentifier: terraform_integration_demos
+  pipelineIdentifier: bootstrap_argocd_pipeline
+  source:
+    type: Webhook
+    spec:
+      type: Custom
+      spec:
+        payloadConditions:
+          - key: <+trigger.payload..notifications[0].run_status>
+            operator: Equals
+            value: applied
+  pipelineBranchName: <+trigger.payload.ref>
