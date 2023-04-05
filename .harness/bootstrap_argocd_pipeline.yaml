@@ -1,0 +1,133 @@
+pipeline:
+  name: bootstrap argocd pipeline
+  description: Bootstrap Argo CD on to Kubernetes. Leverage Terraform Cloud Notification to ensure the target cluster is ready.
+  identifier: bootstrap_argocd_pipeline
+  projectIdentifier: terraform_integration_demos
+  orgIdentifier: default
+  tags: {}
+  stages:
+    - stage:
+        name: Bootstrap Argo CD
+        identifier: bootstrap_argocd
+        type: CI
+        spec:
+          cloneCodebase: false
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  type: GitClone
+                  name: IaaC
+                  identifier: iaac
+                  spec:
+                    connectorRef: GitHub
+                    repoName: vanilla-gke
+                    cloneDirectory: /harness/vanilla-gke
+                    depth: 1
+                    build:
+                      type: branch
+                      spec:
+                        branch: main
+                  description: Clone the IaaC that was used to provision the GKE using Terraform Cloud
+              - step:
+                  type: Run
+                  name: Terraform Outputs
+                  identifier: tf_outputs
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: kameshsampath/kube-dev-tools
+                    shell: Sh
+                    command: |-
+                      cd /harness/vanilla-gke/infra
+                      terraform init
+                      GCP_PROJECT=$(terraform output -raw project-name)
+                      GCP_ZONE=$(terraform output -raw zone)
+                      GKE_CLUSTER_NAME=$(terraform output -raw kubernetes-cluster-name)
+                    envVariables:
+                      TF_TOKEN_app_terraform_io: <+secrets.getValue("terraform_cloud_api_token")>
+                      TF_WORKSPACE: <+secrets.getValue("terraform_workspace")>
+                      TF_CLOUD_ORGANIZATION: <+secrets.getValue("terraform_cloud_organization")>
+                    outputVariables:
+                      - name: GCP_PROJECT
+                      - name: GCP_ZONE
+                      - name: GKE_CLUSTER_NAME
+                    imagePullPolicy: Always
+                  description: Get the outputs of terraform provision
+              - step:
+                  type: GitClone
+                  name: ArgoCD Bootstrap Manifests
+                  identifier: clone_argocd_bootstrap
+                  spec:
+                    connectorRef: GitHub
+                    repoName: bootstrap-argocd
+                    cloneDirectory: /harness/bootstrap-argocd
+                    depth: 1
+                    build:
+                      type: branch
+                      spec:
+                        branch: main
+                  description: Clone ArgoCD Bootstrap Manifests
+              - step:
+                  type: Run
+                  name: Install ArgoCD
+                  identifier: install_argocd
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: google/cloud-sdk:alpine
+                    shell: Sh
+                    command: |
+                      echo "$GOOGLE_APPLICATION_CREDENTIALS"  > /root/sa.json
+
+                      # activate gcloud to use gke-user service account
+                      gcloud auth activate-service-account --key-file=/root/sa.json
+
+                      # ensure kubectl and gke auth plugin are installed
+
+                      gcloud components install kubectl gke-gcloud-auth-plugin
+
+                      # check kubectl version 
+                      kubectl version --short --client
+
+                      # get kubeconfig 
+                      gcloud container clusters get-credentials --project $GCP_PROJECT --zone $GCP_ZONE $GKE_CLUSTER_NAME
+
+                      kubectl get pods -n kube-system
+
+                      #bootstrap argocd
+                      kubectl apply -k /harness/bootstrap-argocd
+
+                      # wait for deployments to be running
+
+                      kubectl rollout status -n argocd  deployment.apps/argocd-applicationset-controller --timeout=180s
+                      kubectl rollout status -n argocd  deployment.apps/argocd-dex-server --timeout=180s
+                      kubectl rollout status -n argocd  deployment.apps/argocd-notifications-controller --timeout=180s
+                      kubectl rollout status -n argocd  deployment.apps/argocd-redis --timeout=180s
+                      kubectl rollout status -n argocd  deployment.apps/argocd-repo-server --timeout=180s
+                      kubectl rollout status -n argocd deployment.apps/argocd-server --timeout=180s
+
+                      # Wait for ArgoCD LB IP
+                      _timeout=0
+                      while [ -z "$(kubectl get svc -n argocd argocd-server -ojsonpath="{.status.loadBalancer.ingress[*].ip}")" ] 
+                      do 
+                         echo "Waiting for 'argocd-server' LoadBalancer IP"
+                         sleep 10s
+                         _timeout=$((_timeout+10))
+                         if [ $_timeout -ge 180 ];
+                         then
+                           break;
+                         fi
+                      done
+                      SERVER_IP=$(kubectl get svc -n argocd argocd-server -ojsonpath="{.status.loadBalancer.ingress[*].ip}")
+                      printf "\nArgoCD Server URL: http://%s\n" "${SERVER_IP}"
+                    envVariables:
+                      GOOGLE_APPLICATION_CREDENTIALS: <+secrets.getValue("google_application_credentials")>
+                      GCP_PROJECT: <+execution.steps.tf_outputs.output.outputVariables.GCP_PROJECT>
+                      GCP_ZONE: <+execution.steps.tf_outputs.output.outputVariables.GCP_ZONE>
+                      GKE_CLUSTER_NAME: <+execution.steps.tf_outputs.output.outputVariables.GKE_CLUSTER_NAME>
+                    imagePullPolicy: IfNotPresent
+                  description: configures gcloud cli
