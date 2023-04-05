@@ -32,7 +32,7 @@ pipeline:
                     build:
                       type: branch
                       spec:
-                        branch: main
+                        branch: <+trigger.payload.ref>
                   description: Clone the IaaC that was used to provision the GKE using Terraform Cloud
               - step:
                   type: Run
