@@ -2,6 +2,8 @@
 
 A [Harness CI](https://www.harness.io/products/continuous-integration) pipeline that allows bootstrapping [Argo CD](https://argo-cd.readthedocs.io/en/stable/) once terraform completes the provisioning, in this demo we will provision a GKE cluster using terraform.
 
+![Overview](docs/images/overview.png)
+
 ## Prerequisites
 
 - [Terraform Cloud Account](https://app.terraform.io/public/signup/account)
@@ -250,6 +252,8 @@ We already added `google_application_credentials` secret as part of the [earlier
 >
 
 ![all terraform secrets](docs/images/tfc_secrets.png)
+
+>**TIP**: You can also skip adding `terraform_workspace` and `terraform_cloud_organization` as we can extract the values from the webhook payload.
 
 ## Notification Trigger
 
