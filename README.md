@@ -324,6 +324,8 @@ An example of successful pipeline run
 - [Terraform Cloud Variables](https://developer.hashicorp.com/terraform/cloud-docs/api-docs/variables)
 - [Terraform Cloud Variable Set](https://developer.hashicorp.com/terraform/cloud-docs/api-docs/variable-sets)
 - [Terraform Notifications](https://developer.hashicorp.com/terraform/cloud-docs/workspaces/settings/notifications)
+- [Harness CI Triggers How-Tos](https://developer.harness.io/docs/category/triggers)
+- [Harness CI Triggers](https://developer.harness.io/docs/platform/pipelines/w_pipeline-steps-reference/triggers-reference/)
 
 ## License
 
