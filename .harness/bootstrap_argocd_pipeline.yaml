@@ -25,8 +25,8 @@ pipeline:
                   name: IaaC
                   identifier: iaac
                   spec:
-                    connectorRef: GitHub
-                    repoName: vanilla-gke
+                    connectorRef: account.Github
+                    repoName: harness-apps/vanilla-gke
                     cloneDirectory: /harness/vanilla-gke
                     depth: 1
                     build:
@@ -63,8 +63,8 @@ pipeline:
                   name: ArgoCD Bootstrap Manifests
                   identifier: clone_argocd_bootstrap
                   spec:
-                    connectorRef: GitHub
-                    repoName: bootstrap-argocd
+                    connectorRef: account.Github
+                    repoName: denisabrantes/bootstrap-argocd
                     cloneDirectory: /harness/bootstrap-argocd
                     depth: 1
                     build:
